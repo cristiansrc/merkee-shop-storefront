@@ -100,12 +100,16 @@ npm run test:watch        # vitest en modo watch
   Pago, email) que hoy corren con adapters fake en dev; el flujo de compra real
   completo requiere esos servicios productivos.
 
-## Estado de AWS
+## Estado de AWS (revisado 2026-08-18)
 
-El storefront se sirve como SPA estática. La propuesta es hospedarlo en un
-**bucket S3 privado detrás de CloudFront/OAC** (ADR-006). **AWS no está
-configurado**; localmente el build se sirve con `vite preview` o cualquier
-servidor estático. No se solicitan secretos por chat.
+El storefront se sirve como SPA estática hospedada en un **bucket S3 privado
+detrás de CloudFront/OAC** (ADR-006). **AWS configurado** en cuenta de aprendizaje,
+región `us-east-1`, un único ambiente: bucket `merkee-frontend-client` con
+distribución CloudFront `E32P11SX9DFU82` → `merkee.shop` desplegados. DNS gestionado
+en Spaceship; `api.merkee.shop` y `admin.merkee.shop` existen; `swagger.merkee.shop`
+pendiente de distribución/origen. No se afirma despliegue productivo terminado; el
+estado del despliegue es **en despliegue / pendiente de verificación**. No se
+solicitan secretos por chat.
 
 ## Notas
 
