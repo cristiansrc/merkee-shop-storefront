@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  CLOUDFRONT_DISTRIBUTION_ID: E32P11SX9DFU82
+
 permissions:
   id-token: write
   contents: read
@@ -69,4 +72,4 @@ jobs:
 
       - name: Invalidate CloudFront Cache
         run: |
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+          aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
