@@ -44,8 +44,11 @@ export const loadCart = createAsyncThunk(
     try {
       return await fetchCart();
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      return rejectWithValue(error.message || 'Error al cargar carrito');
+      const error = err as { message?: string; code?: string };
+      return rejectWithValue({
+        message: error.message || 'Error al cargar carrito',
+        code: error.code,
+      });
     }
   },
 );
@@ -129,7 +132,14 @@ const cartSlice = createSlice({
       })
       .addCase(loadCart.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        const payload = action.payload as { message?: string; code?: string } | undefined;
+        state.error = payload?.message ?? null;
+        // SESSION_EXPIRED del carrito NO es refresh de auth: es una sesión
+        // guest obsoleta/expirada. Limpiar el estado stale para no mostrar un
+        // carrito fantasma (la API ya limpia la cookie en el self-heal).
+        if (payload?.code === 'SESSION_EXPIRED') {
+          state.data = null;
+        }
       });
 
     // Agregar item
