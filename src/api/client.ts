@@ -144,6 +144,25 @@ async function apiFetch<T>(
 
   let response = await doFetch();
 
+  // 410 SESSION_EXPIRED: refresh una vez + reintento (sin bucle).
+  // CART_RESERVATION_EXPIRED u otros 410: sin reintento.
+  if (response.status === 410 && retryOn401) {
+    const errorBody = await response.clone().json().catch(() => null);
+    if (errorBody?.code === 'SESSION_EXPIRED') {
+      const refreshed = await tryRefresh();
+      if (refreshed) {
+        response = await doFetch();
+      } else {
+        // Refresh falló: limpiar token y timer
+        setAccessToken(null);
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+          refreshTimer = null;
+        }
+      }
+    }
+  }
+
   // Refresh silencioso + reintento UNA sola vez ante 401 (sin bucle).
   if (response.status === 401 && retryOn401) {
     const refreshed = await tryRefresh();
