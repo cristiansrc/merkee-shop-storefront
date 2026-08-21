@@ -41,4 +41,35 @@ describe('authSlice', () => {
     expect(state.user).toEqual(user);
     expect(state.isAuthenticated).toBe(true);
   });
+
+  it('debería manejar refresh fulfilled (restauración silenciosa)', () => {
+    const user = {
+      id: '123',
+      display_name: 'Test User',
+      email: 'test@example.com',
+      role: 'cliente' as const,
+      must_change_password: false,
+      phone: null,
+    };
+    const state = authReducer(initialState, {
+      type: 'auth/refresh/fulfilled',
+      payload: user,
+    } as any);
+    expect(state.user).toEqual(user);
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.loading).toBe(false);
+  });
+
+  it('debería manejar refresh rejected (sesión expirada)', () => {
+    const state = authReducer(
+      {
+        ...initialState,
+        user: { id: '1', display_name: 'X', email: 'x@x.com', role: 'cliente' as const, must_change_password: false, phone: null },
+        isAuthenticated: true,
+      },
+      { type: 'auth/refresh/rejected' } as any,
+    );
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+  });
 });

@@ -45,6 +45,59 @@ const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 // === Estado de disponibilidad de API ===
 let apiAvailable: boolean | null = null;
 
+// === Token de acceso en memoria (nunca en localStorage/sessionStorage) ===
+let accessToken: string | null = null;
+
+export const setAccessToken = (token: string | null): void => {
+  accessToken = token;
+};
+
+export const getAccessToken = (): string | null => accessToken;
+
+// === Refresh silencioso (single-flight + retry único, sin bucle) ===
+let refreshPromise: Promise<boolean> | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Decodifica la expiración (`exp`) de un JWT de acceso (ms epoch). */
+export function decodeAccessTokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(atob(normalized)) as { exp?: unknown };
+    return typeof json.exp === 'number' ? json.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+async function tryRefresh(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        await refreshSession();
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+  return refreshPromise;
+}
+
+/** Programa un refresh proactivo ~60 s antes de la expiración del access token. */
+export function scheduleRefresh(token: string): void {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const expiry = decodeAccessTokenExpiry(token);
+  if (!expiry) return;
+  const delay = Math.max(expiry - Date.now() - 60_000, 1_000);
+  refreshTimer = setTimeout(() => {
+    void tryRefresh();
+  }, delay);
+}
+
 async function checkApiAvailability(): Promise<boolean> {
   if (apiAvailable !== null) return apiAvailable;
   try {
@@ -71,14 +124,33 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
   return qs ? `?${qs}` : '';
 }
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
+async function apiFetch<T>(
+  path: string,
+  options?: RequestInit,
+  opts?: { retryOn401?: boolean },
+): Promise<T> {
+  const retryOn401 = opts?.retryOn401 ?? true;
+
+  const doFetch = (): Promise<Response> =>
+    fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...options?.headers,
+      },
+    });
+
+  let response = await doFetch();
+
+  // Refresh silencioso + reintento UNA sola vez ante 401 (sin bucle).
+  if (response.status === 401 && retryOn401) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      response = await doFetch();
+    }
+  }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
@@ -225,29 +297,40 @@ export async function removeCartItem(productId: string): Promise<void> {
 // --- Auth ---
 
 export async function register(request: RegisterRequest): Promise<SessionResponse> {
-  return apiFetch<SessionResponse>('/auth/register', {
+  const session = await apiFetch<SessionResponse>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(request),
-  });
+  }, { retryOn401: false });
+  setAccessToken(session.access_token);
+  scheduleRefresh(session.access_token);
+  return session;
 }
 
 export async function login(request: LoginRequest): Promise<SessionResponse> {
-  return apiFetch<SessionResponse>('/auth/login', {
+  const session = await apiFetch<SessionResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(request),
-  });
+  }, { retryOn401: false });
+  setAccessToken(session.access_token);
+  scheduleRefresh(session.access_token);
+  return session;
 }
 
 export async function refreshSession(): Promise<SessionResponse> {
-  return apiFetch<SessionResponse>('/auth/refresh', {
+  const session = await apiFetch<SessionResponse>('/auth/refresh', {
     method: 'POST',
-  });
+  }, { retryOn401: false });
+  setAccessToken(session.access_token);
+  scheduleRefresh(session.access_token);
+  return session;
 }
 
 export async function logout(): Promise<void> {
   await apiFetch<void>('/auth/logout', {
     method: 'POST',
-  });
+  }, { retryOn401: false });
+  setAccessToken(null);
+  if (refreshTimer) clearTimeout(refreshTimer);
 }
 
 export async function requestPasswordReset(
