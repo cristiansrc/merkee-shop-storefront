@@ -124,12 +124,42 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
   return qs ? `?${qs}` : '';
 }
 
+/**
+ * Lee la sesión de carrito de invitado desde `document.cookie`.
+ *
+ * La cookie `merkee_cart_session` se emite como HttpOnly; en ese caso
+ * `document.cookie` no la expone y esta función devuelve `undefined` (el
+ * server la sigue leyendo vía `credentials: 'include'`). Se mantiene como
+ * path adicional para entornos donde la cookie sí es legible por JS.
+ */
+function readCartSessionCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = /(?:^|;\s*)merkee_cart_session=([^;]+)/.exec(document.cookie);
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+/** Añade `guest_session_id` (si hay cookie de carrito legible) al payload. */
+function withGuestSessionId<T extends { guest_session_id?: string }>(request: T): T {
+  const guestSessionId = readCartSessionCookie();
+  if (guestSessionId && !request.guest_session_id) {
+    return { ...request, guest_session_id: guestSessionId };
+  }
+  return request;
+}
+
 async function apiFetch<T>(
   path: string,
   options?: RequestInit,
-  opts?: { retryOn401?: boolean },
+  opts?: { retryOn401?: boolean; retryOnSessionExpired?: boolean },
 ): Promise<T> {
   const retryOn401 = opts?.retryOn401 ?? true;
+  // `retryOnSessionExpired` controla si un 410 SESSION_EXPIRED dispara el
+  // refresh de auth + reintento. Para el carrito (sesión guest) esto NO debe
+  // ocurrir: SESSION_EXPIRED ahí es la expiración de la sesión guest, no de
+  // la sesión de auth, y el refresh no la recupera (solo produce un carrito
+  // fantasma). En ese caso se propaga el error para que `loadCart` limpie el
+  // estado stale.
+  const retryOnSessionExpired = opts?.retryOnSessionExpired ?? true;
 
   const doFetch = (): Promise<Response> =>
     fetch(`${API_BASE_URL}${path}`, {
@@ -144,9 +174,10 @@ async function apiFetch<T>(
 
   let response = await doFetch();
 
-  // 410 SESSION_EXPIRED: refresh una vez + reintento (sin bucle).
+  // 410 SESSION_EXPIRED: refresh una vez + reintento (sin bucle), SOLO para
+  // endpoints de auth; para el carrito se deja propagar (retryOnSessionExpired=false).
   // CART_RESERVATION_EXPIRED u otros 410: sin reintento.
-  if (response.status === 410 && retryOn401) {
+  if (response.status === 410 && retryOn401 && retryOnSessionExpired) {
     const errorBody = await response.clone().json().catch(() => null);
     if (errorBody?.code === 'SESSION_EXPIRED') {
       const refreshed = await tryRefresh();
@@ -233,7 +264,7 @@ export async function fetchCart(): Promise<CartResponse> {
   if (USE_MOCKS || !(await checkApiAvailability())) {
     return getMockCartWithItems();
   }
-  return apiFetch<CartResponse>('/cart');
+  return apiFetch<CartResponse>('/cart', undefined, { retryOnSessionExpired: false });
 }
 
 export async function addCartItem(
@@ -318,7 +349,7 @@ export async function removeCartItem(productId: string): Promise<void> {
 export async function register(request: RegisterRequest): Promise<SessionResponse> {
   const session = await apiFetch<SessionResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify(withGuestSessionId(request)),
   }, { retryOn401: false });
   setAccessToken(session.access_token);
   scheduleRefresh(session.access_token);
@@ -328,7 +359,7 @@ export async function register(request: RegisterRequest): Promise<SessionRespons
 export async function login(request: LoginRequest): Promise<SessionResponse> {
   const session = await apiFetch<SessionResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify(withGuestSessionId(request)),
   }, { retryOn401: false });
   setAccessToken(session.access_token);
   scheduleRefresh(session.access_token);

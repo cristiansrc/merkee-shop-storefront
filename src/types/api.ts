@@ -142,11 +142,13 @@ export interface RegisterRequest {
   display_name: string;
   email: string;
   password: string;
+  guest_session_id?: string;
 }
 
 export interface LoginRequest {
   email: string;
   password: string;
+  guest_session_id?: string;
 }
 
 export interface PasswordResetRequest {

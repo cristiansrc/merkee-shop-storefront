@@ -13,6 +13,9 @@ import {
   refreshSession,
   logout,
   getMyProfile,
+  fetchCart,
+  login,
+  register,
 } from './client';
 import type { SessionResponse } from '../types/api';
 
@@ -190,5 +193,108 @@ describe('storefront client: reintento 410 SESSION_EXPIRED', () => {
 
     // 3 llamadas: original, refresh, reintento (que vuelve a fallar 410 pero sin reintentar de nuevo)
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('storefront client: carrito y SESSION_EXPIRED', () => {
+  beforeEach(() => {
+    setAccessToken('token-vigente');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('fetchCart NO hace refresh de auth ante 410 SESSION_EXPIRED (sesión guest)', async () => {
+    const error410 = { status: 410, code: 'SESSION_EXPIRED', message: 'Sesión expirada' };
+
+    // 1ª llamada: checkApiAvailability → /categories (200)
+    // 2ª llamada: fetchCart → /cart (410 SESSION_EXPIRED)
+    // NO debe haber una 3ª llamada (refresh de auth)
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(mockFetchResponse([], 200))
+      .mockResolvedValueOnce(mockFetchResponse(error410, 410));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchCart()).rejects.toMatchObject({
+      status: 410,
+      code: 'SESSION_EXPIRED',
+    });
+
+    // Solo 2 llamadas: disponibilidad + carrito; sin refresh de auth.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('storefront client: guest_session_id en login/register', () => {
+  beforeEach(() => {
+    setAccessToken(null);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function stubCookie(value: string): void {
+    Object.defineProperty(document, 'cookie', {
+      value,
+      writable: true,
+      configurable: true,
+    });
+  }
+
+  it('login envía guest_session_id leído de document.cookie', async () => {
+    stubCookie('merkee_cart_session=guest-session-1; other=abc');
+    const fetchMock = vi.fn().mockResolvedValue(mockFetchResponse(sessionResponse, 200));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await login({ email: 'cliente@merkee.shop', password: 'password123' });
+
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(call[0]).toContain('/auth/login');
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.guest_session_id).toBe('guest-session-1');
+  });
+
+  it('register envía guest_session_id leído de document.cookie', async () => {
+    stubCookie('merkee_cart_session=guest-session-1');
+    const fetchMock = vi.fn().mockResolvedValue(mockFetchResponse(sessionResponse, 200));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await register({ display_name: 'Cliente', email: 'cliente@merkee.shop', password: 'password123' });
+
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(call[0]).toContain('/auth/register');
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.guest_session_id).toBe('guest-session-1');
+  });
+
+  it('login NO añade guest_session_id si no hay cookie de carrito', async () => {
+    stubCookie('');
+    const fetchMock = vi.fn().mockResolvedValue(mockFetchResponse(sessionResponse, 200));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await login({ email: 'cliente@merkee.shop', password: 'password123' });
+
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.guest_session_id).toBeUndefined();
+  });
+
+  it('no sobreescribe un guest_session_id ya presente en el payload', async () => {
+    stubCookie('merkee_cart_session=cookie-session');
+    const fetchMock = vi.fn().mockResolvedValue(mockFetchResponse(sessionResponse, 200));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await login({
+      email: 'cliente@merkee.shop',
+      password: 'password123',
+      guest_session_id: 'explicit-session',
+    });
+
+    const call = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.guest_session_id).toBe('explicit-session');
   });
 });
