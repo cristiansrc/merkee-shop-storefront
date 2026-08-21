@@ -28,6 +28,8 @@ export function App() {
             <Route path="categorias" element={<CategoriesPage />} />
             <Route path="productos" element={<ProductsPage />} />
             <Route path="productos/:productId" element={<ProductDetailPage />} />
+            <Route path="login" element={<AuthPage />} />
+            <Route path="registro" element={<AuthPage />} />
             <Route path="auth" element={<AuthPage />} />
             <Route path="mi-cuenta" element={<ProfilePage />} />
             <Route path="checkout" element={<CheckoutPage />} />

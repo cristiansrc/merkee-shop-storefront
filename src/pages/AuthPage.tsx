@@ -1,12 +1,13 @@
 /**
  * Página de autenticación.
- * Muestra login, registro, reset de contraseña según el estado.
+ * Muestra login, registro, reset de contraseña según el query param `view`.
+ * La vista se sincroniza con la URL: ?view=login | ?view=register | ?view=reset-request
  * Responsive móvil primero (iPhone SE 2020).
  * Accesible, es-CO, sin textos ingleses visibles.
  */
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector } from '../store/hooks';
 import { selectIsAuthenticated } from '../store/authSlice';
 import { LoginForm } from '../components/LoginForm';
@@ -15,16 +16,36 @@ import { PasswordResetRequestForm } from '../components/PasswordResetRequestForm
 
 type AuthView = 'login' | 'register' | 'reset-request';
 
+const VALID_VIEWS: AuthView[] = ['login', 'register', 'reset-request'];
+
+function parseView(value: string | null): AuthView {
+  if (value && VALID_VIEWS.includes(value as AuthView)) {
+    return value as AuthView;
+  }
+  return 'login';
+}
+
 export function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const [view, setView] = useState<AuthView>('login');
 
-  // Si ya está autenticado, redirigir al inicio
+  const view = parseView(searchParams.get('view'));
+
+  // Redirigir si ya está autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
   if (isAuthenticated) {
-    navigate('/');
     return null;
   }
+
+  const setView = (next: AuthView) => {
+    setSearchParams({ view: next }, { replace: true });
+  };
 
   const handleSuccess = () => {
     navigate('/');

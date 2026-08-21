@@ -9,11 +9,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSearchQuery } from '../store/catalogSlice';
 import { openCart, selectCartItemCount } from '../store/cartSlice';
+import { selectIsAuthenticated } from '../store/authSlice';
 
 export function Header() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const cartItemCount = useAppSelector(selectCartItemCount);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const [localSearch, setLocalSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -72,6 +74,15 @@ export function Header() {
           <Link to="/productos" className="header__nav-link">
             Productos
           </Link>
+          {isAuthenticated ? (
+            <Link to="/mi-cuenta" className="header__nav-link header__nav-link--auth">
+              Mi cuenta
+            </Link>
+          ) : (
+            <Link to="/login" className="header__nav-link header__nav-link--auth">
+              Iniciar sesión
+            </Link>
+          )}
         </nav>
 
         {/* Carrito */}
@@ -123,6 +134,23 @@ export function Header() {
           >
             Productos
           </Link>
+          {isAuthenticated ? (
+            <Link
+              to="/mi-cuenta"
+              className="header__mobile-nav-link header__mobile-nav-link--auth"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Mi cuenta
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="header__mobile-nav-link header__mobile-nav-link--auth"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Iniciar sesión
+            </Link>
+          )}
         </nav>
       )}
     </header>
