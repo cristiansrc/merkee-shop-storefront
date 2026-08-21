@@ -4,6 +4,7 @@
  * Estado derivado del servidor, sin persistencia en navegador.
  */
 
+import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { closeCart } from '../store/cartSlice';
 import { CartItem } from './CartItem';
@@ -21,10 +22,16 @@ function formatCOP(value: number): string {
 
 export function CartPanel() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { data: cart, isOpen, loading, error } = useAppSelector((state) => state.cart);
 
   const handleClose = () => {
     dispatch(closeCart());
+  };
+
+  const handleCheckout = () => {
+    handleClose();
+    navigate('/checkout');
   };
 
   if (!isOpen) return null;
@@ -96,7 +103,7 @@ export function CartPanel() {
                 </div>
               </div>
 
-              <button className="cart-panel__checkout-btn" type="button">
+              <button className="cart-panel__checkout-btn" type="button" onClick={handleCheckout}>
                 Continuar al checkout
               </button>
 

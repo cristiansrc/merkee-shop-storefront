@@ -25,18 +25,24 @@ export function CheckoutPage() {
   const currentStep = useAppSelector(selectCheckoutStep);
   const cartItems = useAppSelector(selectCartItems);
   const error = useAppSelector(selectCheckoutError);
+  const cartLoading = useAppSelector((state) => state.cart.loading);
+  const cartData = useAppSelector((state) => state.cart.data);
 
   // Cargar carrito al montar
   useEffect(() => {
     dispatch(loadCart());
   }, [dispatch]);
 
-  // Redirigir si no hay items en el carrito (excepto en confirmación)
+  // Redirigir si no hay items en el carrito después de cargar (excepto en confirmación)
   useEffect(() => {
-    if (currentStep !== 'confirmation' && cartItems.length === 0) {
-      navigate('/carrito');
+    // No redirigir mientras el carrito está cargando
+    if (cartLoading) return;
+    
+    // Solo redirigir si ya se cargó el carrito y está vacío
+    if (currentStep !== 'confirmation' && cartData && cartItems.length === 0) {
+      navigate('/productos');
     }
-  }, [cartItems.length, currentStep, navigate]);
+  }, [cartLoading, cartData, cartItems.length, currentStep, navigate]);
 
   // Avanzar al paso de autenticación si no está autenticado
   useEffect(() => {
