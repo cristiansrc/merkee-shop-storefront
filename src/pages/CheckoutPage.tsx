@@ -67,7 +67,17 @@ export function CheckoutPage() {
 
       <div className="checkout-content">
         {currentStep === 'cart' && (
-          <CartSummary />
+          <>
+            <CartSummary />
+            <div className="checkout-actions">
+              <button
+                onClick={() => dispatch(setCheckoutStep('address'))}
+                className="btn-primary"
+              >
+                Continuar
+              </button>
+            </div>
+          </>
         )}
 
         {currentStep === 'auth' && (

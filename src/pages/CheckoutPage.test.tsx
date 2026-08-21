@@ -295,6 +295,60 @@ describe('CheckoutPage - Guard de carga y redirección', () => {
     });
   });
 
+  it('usuario autenticado en step cart ve botón Continuar y avanza a address', async () => {
+    mockFetchCart.mockResolvedValue(cartWithItemsResponse);
+
+    const store = createTestStore({
+      cart: {
+        data: null,
+        loading: false,
+        error: null,
+        isOpen: false,
+        lastAction: null,
+      },
+      auth: {
+        user: {
+          id: 'user-1',
+          email: 'test@test.com',
+          role: 'cliente' as const,
+          display_name: 'Test User',
+          must_change_password: false,
+          phone: null,
+        },
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      },
+      checkout: {
+        currentStep: 'cart',
+        loading: false,
+        error: null,
+        result: null,
+        deliveryAddress: null,
+        paymentProvider: null,
+      },
+    });
+
+    renderCheckoutPage(store);
+
+    // Esperar a que renderice el resumen del carrito
+    await waitFor(() => {
+      expect(screen.getByText('Resumen del Pedido')).toBeInTheDocument();
+    });
+
+    // Verificar que el botón Continuar está visible
+    const continuarBtn = screen.getByRole('button', { name: /continuar/i });
+    expect(continuarBtn).toBeInTheDocument();
+
+    // Hacer click en Continuar
+    continuarBtn.click();
+
+    // Verificar que avanza al paso de dirección
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /dirección de entrega/i })).toBeInTheDocument();
+    });
+  });
+
   it('no redirige a /carrito cuando el carrito está vacío', async () => {
     mockFetchCart.mockResolvedValue(emptyCartResponse);
 
