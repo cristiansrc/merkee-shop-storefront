@@ -100,16 +100,26 @@ npm run test:watch        # vitest en modo watch
   Pago, email) que hoy corren con adapters fake en dev; el flujo de compra real
   completo requiere esos servicios productivos.
 
-## Estado de AWS (revisado 2026-08-18)
+## Estado de AWS (rehidratado 2026-08-21; histórico 2026-08-18)
 
 El storefront se sirve como SPA estática hospedada en un **bucket S3 privado
 detrás de CloudFront/OAC** (ADR-006). **AWS configurado** en cuenta de aprendizaje,
 región `us-east-1`, un único ambiente: bucket `merkee-frontend-client` con
 distribución CloudFront `E32P11SX9DFU82` → `merkee.shop` desplegados. DNS gestionado
 en Spaceship; `api.merkee.shop` y `admin.merkee.shop` existen; `swagger.merkee.shop`
-pendiente de distribución/origen. No se afirma despliegue productivo terminado; el
-estado del despliegue es **en despliegue / pendiente de verificación**. No se
-solicitan secretos por chat.
+pendiente de distribución/origen. **Verificado 2026-08-21:** `merkee.shop` 301→
+`www.merkee.shop` 200, CORS allowlist + PUT operativo (`7fdb009`), `PUT
+/cart/items/{productId}` y checkout con `guest_session_id` (commits `b37b280`,
+`acd8cbc`), auth con refresh silencioso (`04cdeaf`, `0090288`, `a82f8d5`).
+**Histórico 2026-08-18:** entrega con API local OK pero AWS no operativo (ECR 0,
+ECS 1/0, puertos/health desalineados, admin mocks forzados, carrito guest roto,
+checkout stub, imágenes `url` vacía, sesión 10m). **Postentrega 2026-08-21:**
+ECS estable, ECR publicado, media `images.merkee.shop` OAC (`02167cd`), sesión
+30m (`580ff8f`). No se afirma despliegue productivo terminado; **no se declara
+producción lista** — gates RDS público, observabilidad y legal siguen abiertos.
+No se solicitan secretos por chat. Ver `../../README.md` y
+`../../docs/DEPLOYMENT_STATUS.md` (trazabilidad histórica + estado verificado
+2026-08-21, fechado, puede cambiar).
 
 ## Notas
 
