@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSearchQuery } from '../store/catalogSlice';
 import { openCart, selectCartItemCount } from '../store/cartSlice';
-import { selectIsAuthenticated } from '../store/authSlice';
+import { selectIsAuthenticated, logoutUser } from '../store/authSlice';
 
 export function Header() {
   const dispatch = useAppDispatch();
@@ -30,6 +30,11 @@ export function Header() {
 
   const handleCartClick = () => {
     dispatch(openCart());
+  };
+
+  const handleLogout = async () => {
+    await dispatch(logoutUser());
+    navigate('/');
   };
 
   return (
@@ -75,9 +80,18 @@ export function Header() {
             Productos
           </Link>
           {isAuthenticated ? (
-            <Link to="/mi-cuenta" className="header__nav-link header__nav-link--auth">
-              Mi cuenta
-            </Link>
+            <>
+              <Link to="/mi-cuenta" className="header__nav-link header__nav-link--auth">
+                Mi cuenta
+              </Link>
+              <button
+                type="button"
+                className="header__nav-link header__nav-link--auth"
+                onClick={handleLogout}
+              >
+                Cerrar sesión
+              </button>
+            </>
           ) : (
             <Link to="/login" className="header__nav-link header__nav-link--auth">
               Iniciar sesión
@@ -135,13 +149,25 @@ export function Header() {
             Productos
           </Link>
           {isAuthenticated ? (
-            <Link
-              to="/mi-cuenta"
-              className="header__mobile-nav-link header__mobile-nav-link--auth"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Mi cuenta
-            </Link>
+            <>
+              <Link
+                to="/mi-cuenta"
+                className="header__mobile-nav-link header__mobile-nav-link--auth"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Mi cuenta
+              </Link>
+              <button
+                type="button"
+                className="header__mobile-nav-link header__mobile-nav-link--auth"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </>
           ) : (
             <Link
               to="/login"

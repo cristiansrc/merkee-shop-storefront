@@ -931,7 +931,7 @@ describe('Smoke E2E — Perfil / Password Change', () => {
     expect(screen.getByText('Cerrar Sesión')).toBeInTheDocument();
   });
 
-  it('ProfilePage muestra must_change_password guard', async () => {
+  it('ProfilePage muestra must_change_password guard con opción de cerrar sesión', async () => {
     const store = createTestStore({
       auth: { user: mockMustChangePasswordUser, isAuthenticated: true, loading: false, error: null },
       profile: { user: mockMustChangePasswordUser, loading: false, error: null, successMessage: null, passwordChangeLoading: false, passwordChangeError: null, resetRequestLoading: false, resetRequestSent: false },
@@ -940,7 +940,7 @@ describe('Smoke E2E — Perfil / Password Change', () => {
     renderWithProviders(<ProfilePage />, { store, route: '/mi-cuenta' });
 
     expect(screen.getByText(/debes cambiar tu contraseña antes de continuar/i)).toBeInTheDocument();
-    expect(screen.queryByText('Cerrar Sesión')).not.toBeInTheDocument();
+    expect(screen.getByText('Cerrar Sesión')).toBeInTheDocument();
   });
 
   it('ProfileForm muestra email deshabilitado y rol', () => {

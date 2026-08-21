@@ -57,13 +57,14 @@ export function ProfilePage() {
         <>
           <ProfileForm />
           <PasswordChangeForm />
-          <div className="profile-actions">
-            <button onClick={handleLogout} className="btn-secondary">
-              Cerrar Sesión
-            </button>
-          </div>
         </>
       )}
+
+      <div className="profile-actions">
+        <button onClick={handleLogout} className="btn-secondary">
+          Cerrar Sesión
+        </button>
+      </div>
     </div>
   );
 }

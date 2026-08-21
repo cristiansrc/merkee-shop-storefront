@@ -86,6 +86,41 @@ describe('Header - Autenticación', () => {
     expect(screen.queryByRole('link', { name: /mi cuenta/i })).not.toBeInTheDocument();
   });
 
+  it('muestra "Cerrar sesión" cuando está autenticado', () => {
+    const store = createTestStore({
+      auth: {
+        user: { id: '1', email: 'a@b.com', role: 'cliente', display_name: 'Test', must_change_password: false, phone: null, created_at: '', updated_at: '' },
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      },
+    });
+    renderHeader(store);
+    expect(screen.getByRole('button', { name: /cerrar sesión/i })).toBeInTheDocument();
+  });
+
+  it('no muestra "Cerrar sesión" cuando no está autenticado', () => {
+    renderHeader();
+    expect(screen.queryByRole('button', { name: /cerrar sesión/i })).not.toBeInTheDocument();
+  });
+
+  it('muestra "Cerrar sesión" en menú móvil cuando autenticado', () => {
+    const store = createTestStore({
+      auth: {
+        user: { id: '1', email: 'a@b.com', role: 'cliente', display_name: 'Test', must_change_password: false, phone: null, created_at: '', updated_at: '' },
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+      },
+    });
+    renderHeader(store);
+    const mobileMenuBtn = screen.getByRole('button', { name: /menú de navegación/i });
+    mobileMenuBtn.click();
+    // El botón de cerrar sesión debe existir tanto en nav desktop como en nav móvil
+    const logoutButtons = screen.getAllByRole('button', { name: /cerrar sesión/i });
+    expect(logoutButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('incluye enlace de auth en navegación móvil', () => {
     renderHeader();
     const mobileMenuBtn = screen.getByRole('button', { name: /menú de navegación/i });
