@@ -80,14 +80,29 @@ describe('AuthPage - Rutas y query params', () => {
     expect(screen.getByRole('form', { name: /formulario de restablecimiento de contraseña/i })).toBeInTheDocument();
   });
 
-  it('muestra login por defecto en /registro (sin query param)', () => {
+  it('muestra formulario de registro por defecto en /registro (sin query param)', () => {
     renderWithProviders({ route: '/registro' });
-    expect(screen.getByRole('form', { name: /formulario de inicio de sesión/i })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: /formulario de registro/i })).toBeInTheDocument();
   });
 
   it('muestra registro en /registro con ?view=register', () => {
     renderWithProviders({ route: '/registro?view=register' });
     expect(screen.getByRole('form', { name: /formulario de registro/i })).toBeInTheDocument();
+  });
+
+  it('muestra login en /registro con ?view=login', () => {
+    renderWithProviders({ route: '/registro?view=login' });
+    expect(screen.getByRole('form', { name: /formulario de inicio de sesión/i })).toBeInTheDocument();
+  });
+
+  it('muestra reset en /registro con ?view=reset-request', () => {
+    renderWithProviders({ route: '/registro?view=reset-request' });
+    expect(screen.getByRole('form', { name: /formulario de restablecimiento de contraseña/i })).toBeInTheDocument();
+  });
+
+  it('muestra heading "Crear Cuenta" directamente en /registro', () => {
+    renderWithProviders({ route: '/registro' });
+    expect(screen.getByRole('heading', { name: /crear cuenta/i })).toBeInTheDocument();
   });
 
   it('muestra login por defecto en /auth (ruta legacy)', () => {

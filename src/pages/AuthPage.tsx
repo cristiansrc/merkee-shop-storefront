@@ -7,7 +7,7 @@
  */
 
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppSelector } from '../store/hooks';
 import { selectIsAuthenticated } from '../store/authSlice';
 import { LoginForm } from '../components/LoginForm';
@@ -18,19 +18,24 @@ type AuthView = 'login' | 'register' | 'reset-request';
 
 const VALID_VIEWS: AuthView[] = ['login', 'register', 'reset-request'];
 
-function parseView(value: string | null): AuthView {
+function parseView(value: string | null, pathname: string): AuthView {
   if (value && VALID_VIEWS.includes(value as AuthView)) {
     return value as AuthView;
+  }
+  // /registro sin query param → vista registro por defecto
+  if (pathname === '/registro') {
+    return 'register';
   }
   return 'login';
 }
 
 export function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
 
-  const view = parseView(searchParams.get('view'));
+  const view = parseView(searchParams.get('view'), location.pathname);
 
   // Redirigir si ya está autenticado
   useEffect(() => {
